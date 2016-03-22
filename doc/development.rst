@@ -160,6 +160,7 @@ So instead of settings folder, You can point it at the **ksgen_settings.yaml**
 file to get overview of **workarounds used in specific job run**,
 where there normally shouldn't be any workaround for closed bug,
 unless it's just freshly resolved and author of the workaround didn't revalidated it yet::
+
     $ ksgen ...
     $ ./tools/workaround_status ksgen_settings.yaml
 

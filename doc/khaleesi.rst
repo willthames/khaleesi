@@ -371,66 +371,67 @@ then there should be an neutron/jenkins-config.yml file. The name may differ
 and can be set by using --extra-vars tester.component.config_file in ksgen
 invocation.
 
-The structure of an jenkins-config should be similar to:
+The structure of an jenkins-config should be similar to::
 
------------------------ jenkins-config sample beginning------------------------
-# Khaleesi will read and execute this section only if --tester=pep8  included in ksgen invocation
-pep8:
-    rpm_deps: [ python-neutron, python-hacking, pylint ]
-    remove_rpm: []
-    run: tox --sitepackages -v -e pep8 2>&1 | tee ../logs/testrun.log;
+    ----------------------- jenkins-config sample beginning------------------------
+    # Khaleesi will read and execute this section only if --tester=pep8  included in ksgen invocation
+    pep8:
+        rpm_deps: [ python-neutron, python-hacking, pylint ]
+        remove_rpm: []
+        run: tox --sitepackages -v -e pep8 2>&1 | tee ../logs/testrun.log;
+    
+    # Khaleesi will read and execute this section only if --tester=unittest included in ksgen invocation
+    unittest:
+        rpm_deps: [ python-neutron, python-cliff ]
+        remove_rpm: []
+        run: tox --sitepackages -v -e py27 2>&1 | tee ../logs/testrun.log;
+    
+    # Common RPMs that are used by all the testers
+    rpm_deps: [ gcc, git, "{{ hostvars[inventory_hostname][tester.component.tox_target]['rpm_deps'] }}" ]
+    
+    # The RPMs that shouldn't be installed when running tests, no matter which tester chosen
+    remove_rpm: [ "{{ hostvars[inventory_hostname][tester.component.tox_target]['remove_rpm'] }}" ]
+    
+    # Any additional repos besides defaults that should be enabled to support testing
+    # the repos need to be already installed.  this just allows you to enable them.
+    add_additional_repos: [ ]
+    
+    # Any repos to be disabled to support testing
+    # this just allows you to disable them.
+    remove_additional_repos: [ ]
+    
+    # Common pre-run steps for all testers
+    neutron_virt_run_config:
+      run: >
+        set -o pipefail;
+        rpm -qa > installed-rpms.txt;
+        truncate --size 0 requirements.txt && truncate --size 0 test-requirements.txt;
+        {{ hostvars[inventory_hostname][tester.component.tox_target]['run'] }}
 
-# Khaleesi will read and execute this section only if --tester=unittest included in ksgen invocation
-unittest:
-    rpm_deps: [ python-neutron, python-cliff ]
-    remove_rpm: []
-    run: tox --sitepackages -v -e py27 2>&1 | tee ../logs/testrun.log;
+    # Files to archive
+      archive:
+        - ../logs/testrun.log
+        - installed-rpms.txt
+    
+    # Main section that will be read by khaleesi
+    test_config:
+      virt:
+        RedHat-7:
+          setup:
+            enable_repos: "{{ add_additional_repos }}" # Optional. When you would like to look in additional places for RPMs
+            disable_repos: "{{ remove_additional_repos }}" # Optional. When you would like to remove repos to search
+            install: "{{ rpm_deps }}" # Optional. When you would like to install requirements
+            remove: "{{ remove_rpm }}" # Optional. When you would like to remove packages
+          run: "{{ neutron_virt_run_config.run }}" # A must. The actual command used to run the tests
+          archive: "{{ neutron_virt_run_config.archive }}" # A must. Files to archive
+    ----------------------- jenkins-config sample end ------------------------
 
-# Common RPMs that are used by all the testers
-rpm_deps: [ gcc, git, "{{ hostvars[inventory_hostname][tester.component.tox_target]['rpm_deps'] }}" ]
-
-# The RPMs that shouldn't be installed when running tests, no matter which tester chosen
-remove_rpm: [ "{{ hostvars[inventory_hostname][tester.component.tox_target]['remove_rpm'] }}" ]
-
-# Any additional repos besides defaults that should be enabled to support testing
-# the repos need to be already installed.  this just allows you to enable them.
-add_additional_repos: [ ]
-
-# Any repos to be disabled to support testing
-# this just allows you to disable them.
-remove_additional_repos: [ ]
-
-# Common pre-run steps for all testers
-neutron_virt_run_config:
-  run: >
-    set -o pipefail;
-    rpm -qa > installed-rpms.txt;
-    truncate --size 0 requirements.txt && truncate --size 0 test-requirements.txt;
-    {{ hostvars[inventory_hostname][tester.component.tox_target]['run'] }}
-
-# Files to archive
-  archive:
-    - ../logs/testrun.log
-    - installed-rpms.txt
-
-# Main section that will be read by khaleesi
-test_config:
-  virt:
-    RedHat-7:
-      setup:
-        enable_repos: "{{ add_additional_repos }}" # Optional. When you would like to look in additional places for RPMs
-        disable_repos: "{{ remove_additional_repos }}" # Optional. When you would like to remove repos to search
-        install: "{{ rpm_deps }}" # Optional. When you would like to install requirements
-        remove: "{{ remove_rpm }}" # Optional. When you would like to remove packages
-      run: "{{ neutron_virt_run_config.run }}" # A must. The actual command used to run the tests
-      archive: "{{ neutron_virt_run_config.archive }}" # A must. Files to archive
------------------------ jenkins-config sample end ------------------------
-
-Usage:
+Usage
+-----
 
 Below are examples on how to use the different testers:
 
-To run pep8 you would use the following ksgen invocation:
+To run pep8 you would use the following ksgen invocation::
 
   ksgen --config-dir settings \
   generate \
@@ -443,7 +444,7 @@ To run pep8 you would use the following ksgen invocation:
     --tester=pep8
   ksgen_settings.yml
 
-To run unit tests you would use the following ksgen invocation:
+To run unit tests you would use the following ksgen invocation::
 
   ksgen --config-dir settings \
   generate \
@@ -456,7 +457,7 @@ To run unit tests you would use the following ksgen invocation:
     --tester=unittest
   ksgen_settings.yml
 
-To run functional tests, you would use:
+To run functional tests, you would use::
 
   ksgen --config-dir settings \
   generate \
@@ -469,7 +470,7 @@ To run functional tests, you would use:
     --tester=functional \
   ksgen_settings.yml
 
-To run API in-tree tests, you would use:
+To run API in-tree tests, you would use::
 
   ksgen --config-dir settings \
   generate \
@@ -483,7 +484,7 @@ To run API in-tree tests, you would use:
     --installer-component=glance
   ksgen_settings.yml
 
-To run tempest tests, use this invocation:
+To run tempest tests, use this invocation::
 
   ksgen --config-dir settings \
   generate \
